@@ -20,19 +20,6 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 logger = logging.getLogger(__name__)
 
 def smi_trend(df: DataFrame, k_length=9, d_length=3, smoothing_type='EMA', smoothing=10):
-    """
-    Stochastic Momentum Index (SMI) Trend Indicator 
-
-    SMI > 0 and SMI > MA: (2) Bull
-    SMI < 0 and SMI > MA: (1) Possible Bullish Reversal
-
-    SMI > 0 and SMI < MA: (-1) Possible Bearish Reversal
-    SMI < 0 and SMI < MA: (-2) Bear
-
-    Returns:
-        pandas.Series: New feature generated 
-    """
-
     ll = df['low'].rolling(window=k_length).min()
     hh = df['high'].rolling(window=k_length).max()
 
@@ -96,15 +83,15 @@ def detect_pullback(df: DataFrame, periods=30, method='candle_body'):
 
 class SimpleFutures(IStrategy):
     INTERFACE_VERSION = 3
-    timeframe = '15m'
+    timeframe = '1h'
 
     can_short = True
     use_custom_stoploss=True
     process_only_new_candles = True
-    use_exit_signal = True
+    use_exit_signal = False
     exit_profit_only = False
     startup_candle_count: int = 0
-    stoploss = -1
+    stoploss = -0.211 # we use custom stoploss, but no lower this deadline, custom_stoploss will respect this stoploss
     order_types = {
         'entry': 'market',
         'exit': 'market',
@@ -112,36 +99,34 @@ class SimpleFutures(IStrategy):
         'stoploss_on_exchange': False
     }
 
-    pullback_detect_method = CategoricalParameter(['stdev_outlier', 'pct_outlier', 'candle_body'], default = 'pct_outlier', space = 'buy', optimize = True)
-    ma_smoothy_type = CategoricalParameter(['SMA', 'EMA', 'WMA', 'DEMA', 'TEMA'], default = 'EMA', space = 'buy', optimize = True)
+    #pullback_detect_method = CategoricalParameter(['stdev_outlier', 'pct_outlier', 'candle_body'], default = 'pct_outlier', space = 'buy', optimize = True)
 
     # SMI params
     smi_k_length = IntParameter(1, 99, default=9, space="buy", optimize=True)
     smi_d_length = IntParameter(1, 99, default=3, space="buy", optimize=True)
+    ma_smoothy_type = CategoricalParameter(['SMA', 'EMA', 'WMA', 'DEMA', 'TEMA'], default = 'EMA', space = 'buy', optimize = True)
     smi_smooth_length = IntParameter(1, 99, default=10, space="buy", optimize=True)
 
     # Pullback params
-    short_pullback_exit = DecimalParameter(-0.99, 0.99, default=0.5, space='sell')
-    long_pullback_exit = DecimalParameter(-0.99, 0.99, default=-0.5, space='sell')
+    #short_pullback_exit = DecimalParameter(-0.99, 0.99, default=0.5, space='sell', optimize=False)
+    #long_pullback_exit = DecimalParameter(-0.99, 0.99, default=-0.5, space='sell', optimize=False)
 
     ## Trailing params
     # https://discordapp.com/channels/700048804539400213/852593312116375642/1053608836369502278
     # it definitely makes the trailing stop less sensitive to in-candle moves and avoids getting stopped out too early
-    is_optimize_trailing = True
-    pHSL = DecimalParameter(-0.200, -0.040, default=-0.08, decimals=3, space='sell', load=True, optimize=is_optimize_trailing)
-    pPF_1 = DecimalParameter(0.008, 0.030, default=0.016, decimals=3, space='sell', load=True, optimize=is_optimize_trailing)
-    pSL_1 = DecimalParameter(0.008, 0.030, default=0.011, decimals=3, space='sell', load=True, optimize=is_optimize_trailing)
+    is_optimize_custom_SL = True
+    pHSL = DecimalParameter(-0.200, -0.040, default=-0.08, decimals=3, space='sell', load=True, optimize=is_optimize_custom_SL)
+    pPF_1 = DecimalParameter(0.008, 0.030, default=0.016, decimals=3, space='sell', load=True, optimize=is_optimize_custom_SL)
+    pSL_1 = DecimalParameter(0.008, 0.030, default=0.011, decimals=3, space='sell', load=True, optimize=is_optimize_custom_SL)
     # profit threshold 2, SL_2 is used
-    pPF_2 = DecimalParameter(0.050, 0.200, default=0.080, decimals=3, space='sell', load=True, optimize=is_optimize_trailing)
-    pSL_2 = DecimalParameter(0.030, 0.200, default=0.040, decimals=3, space='sell', load=True, optimize=is_optimize_trailing)
+    pPF_2 = DecimalParameter(0.050, 0.200, default=0.080, decimals=3, space='sell', load=True, optimize=is_optimize_custom_SL)
+    pSL_2 = DecimalParameter(0.030, 0.200, default=0.040, decimals=3, space='sell', load=True, optimize=is_optimize_custom_SL)
 
     def populate_indicators(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
         dataframe['smi'], dataframe['smi_ma'], dataframe['smi_trend'] = smi_trend(dataframe, self.smi_k_length.value, self.smi_d_length.value, self.ma_smoothy_type.value)
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe = detect_pullback(dataframe, 30, self.pullback_detect_method.value)
-        last_candle = dataframe.iloc[-1].squeeze()
         dataframe.loc[
             (
                 (qtpylib.crossed_above(dataframe['smi_trend'], 0))
@@ -193,12 +178,12 @@ class SimpleFutures(IStrategy):
 
         return stoploss_from_open(sl_profit, current_profit, is_short=trade.is_short)
 
-    def custom_exit(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
-                    current_profit: float, **kwargs):
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        last_candle = dataframe.iloc[-1].squeeze()
-        dataframe = detect_pullback(dataframe, 30)
-        if "short" in trade.enter_tag and last_candle["pullback_flag"] > self.short_pullback_exit.value:
-            return "short_pullback_exit"
-        if "long" in trade.enter_tag and last_candle["pullback_flag"] < self.long_pullback_exit.value:
-            return "long_pullback_exit"
+#    def custom_exit(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
+#                    current_profit: float, **kwargs):
+#        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+#        last_candle = dataframe.iloc[-1].squeeze()
+#        dataframe = detect_pullback(dataframe, 30)
+#        if "short" in trade.enter_tag and last_candle["pullback_flag"] > self.short_pullback_exit.value:
+#            return "short_pullback_exit"
+#        if "long" in trade.enter_tag and last_candle["pullback_flag"] < self.long_pullback_exit.value:
+#            return "long_pullback_exit"

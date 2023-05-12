@@ -1,6 +1,15 @@
 {
   "strategy_name": "SimpleFutures",
   "params": {
+    "roi": {
+      "0": 0.21,
+      "120": 0.14,
+      "240": 0.07,
+      "360": 0
+    },
+    "stoploss": {
+      "stoploss": -0.211
+    },
     "trailing": {
       "trailing_stop": false,
       "trailing_stop_positive": null,
@@ -11,32 +20,20 @@
       "max_open_trades": 3
     },
     "buy": {
-      "ma_smoothy_type": "WMA",
-      "pullback_detect_method": "pct_outlier",
-      "smi_d_length": 83,
-      "smi_k_length": 7,
-      "smi_smooth_length": 5
+      "ma_smoothy_type": "DEMA",
+      "smi_d_length": 46,
+      "smi_k_length": 13,
+      "smi_smooth_length": 51
     },
     "sell": {
-      "long_pullback_exit": -0.467,
-      "pHSL": -0.176,
+      "pHSL": -0.2,
       "pPF_1": 0.008,
-      "pPF_2": 0.187,
+      "pPF_2": 0.156,
       "pSL_1": 0.008,
-      "pSL_2": 0.185,
-      "short_pullback_exit": 0.336
+      "pSL_2": 0.15
     },
-    "protection": {},
-    "roi": {
-      "0": 0.477,
-      "331": 0.23199999999999998,
-      "593": 0.074,
-      "1389": 0
-    },
-    "stoploss": {
-      "stoploss": -0.015
-    }
+    "protection": {}
   },
   "ft_stratparam_v": 1,
-  "export_time": "2023-05-11 05:24:50.551458+00:00"
+  "export_time": "2023-05-12 14:27:29.242219+00:00"
 }
