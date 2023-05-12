@@ -1,0 +1,14 @@
+{
+    "api_server": {
+        "enabled": false,
+        "listen_ip_address": "0.0.0.0",
+        "listen_port": 8080,
+        "verbosity": "error",
+        "enable_openapi": false,
+        "jwt_secret_key": "somethingrandomhere",
+        "ws_token": "tGDddl4DR2Mb2L48jviazuqk5ODDO94Nsg",
+        "CORS_origins": [],
+        "username": "",
+        "password": ""
+    }
+}
