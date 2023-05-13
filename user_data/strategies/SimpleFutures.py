@@ -176,7 +176,7 @@ class SimpleFutures(IStrategy):
             if (1 - ((1 + sl_profit) / (1 + current_profit))) <= 0:
                 return 1
 
-        return stoploss_from_open(sl_profit, current_profit, is_short=trade.is_short)
+        return stoploss_from_open(sl_profit, current_profit, is_short=trade.is_short) or 1
 
 #    def custom_exit(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
 #                    current_profit: float, **kwargs):

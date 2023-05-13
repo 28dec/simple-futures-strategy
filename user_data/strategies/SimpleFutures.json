@@ -21,19 +21,19 @@
     },
     "buy": {
       "ma_smoothy_type": "DEMA",
-      "smi_d_length": 46,
-      "smi_k_length": 13,
-      "smi_smooth_length": 51
+      "smi_d_length": 89,
+      "smi_k_length": 5,
+      "smi_smooth_length": 10
     },
     "sell": {
-      "pHSL": -0.2,
+      "pHSL": -0.101,
       "pPF_1": 0.008,
-      "pPF_2": 0.156,
+      "pPF_2": 0.167,
       "pSL_1": 0.008,
-      "pSL_2": 0.15
+      "pSL_2": 0.164
     },
     "protection": {}
   },
   "ft_stratparam_v": 1,
-  "export_time": "2023-05-12 14:27:29.242219+00:00"
+  "export_time": "2023-05-13 01:28:08.207580+00:00"
 }
