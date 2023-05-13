@@ -55,48 +55,29 @@ def smi_trend(df: DataFrame, k_length=9, d_length=3, smoothing_type='EMA', smoot
 
     return smi, smi_ma, smi_trend
 
-def detect_pullback(df: DataFrame, periods=30, method='candle_body'):
-    if method == 'stdev_outlier':
-        outlier_threshold = 2.0
-        df['dif'] = df['close'] - df['close'].shift(1)
-        df['dif_squared_sum'] = (df['dif']**2).rolling(window=periods + 1).sum()
-        df['std'] = np.sqrt((df['dif_squared_sum'] - df['dif'].shift(0)**2) / (periods - 1))
-        df['z'] = df['dif'] / df['std']
-        df['pullback_flag'] = np.where(df['z'] >= outlier_threshold, 1, 0)
-        df['pullback_flag'] = np.where(df['z'] <= -outlier_threshold, -1, df['pullback_flag'])
-
-    if method == 'pct_outlier':
-        outlier_threshold = 2.0
-        df["pb_pct_change"] = df["close"].pct_change()
-        df['pb_zscore'] = qtpylib.zscore(df, window=periods, col='pb_pct_change')
-        df['pullback_flag'] = np.where(df['pb_zscore'] >= outlier_threshold, 1, 0)
-        df['pullback_flag'] = np.where(df['pb_zscore'] <= -outlier_threshold, -1, df['pullback_flag'])
-
-    if method == 'candle_body':
-        pullback_pct = 1.0
-        df['change'] = df['close'] - df['open']
-        df['pullback'] = (df['change'] / df['open']) * 100
-        df['pullback_flag'] = np.where(df['pullback'] >= pullback_pct, 1, 0)
-        df['pullback_flag'] = np.where(df['pullback'] <= -pullback_pct, -1, df['pullback_flag'])
-
-    return df
-
 class SimpleFutures(IStrategy):
     INTERFACE_VERSION = 3
     timeframe = '1h'
 
     can_short = True
-    use_custom_stoploss=True
+    use_custom_stoploss=False
     process_only_new_candles = True
     use_exit_signal = False
     exit_profit_only = False
     startup_candle_count: int = 0
-    stoploss = -0.211 # we use custom stoploss, but no lower this deadline, custom_stoploss will respect this stoploss
+    stoploss = -0.291 # we use custom stoploss, but no lower this deadline, custom_stoploss will respect this stoploss
     order_types = {
         'entry': 'market',
         'exit': 'market',
         'stoploss': 'market',
         'stoploss_on_exchange': False
+    }
+
+    minimal_roi = {
+        "360": 0.28,
+        "240": 0.21,
+        "120": 0.14,
+        "0": 0.07
     }
 
     #pullback_detect_method = CategoricalParameter(['stdev_outlier', 'pct_outlier', 'candle_body'], default = 'pct_outlier', space = 'buy', optimize = True)
@@ -106,10 +87,6 @@ class SimpleFutures(IStrategy):
     smi_d_length = IntParameter(1, 99, default=3, space="buy", optimize=True)
     ma_smoothy_type = CategoricalParameter(['SMA', 'EMA', 'WMA', 'DEMA', 'TEMA'], default = 'EMA', space = 'buy', optimize = True)
     smi_smooth_length = IntParameter(1, 99, default=10, space="buy", optimize=True)
-
-    # Pullback params
-    #short_pullback_exit = DecimalParameter(-0.99, 0.99, default=0.5, space='sell', optimize=False)
-    #long_pullback_exit = DecimalParameter(-0.99, 0.99, default=-0.5, space='sell', optimize=False)
 
     ## Trailing params
     # https://discordapp.com/channels/700048804539400213/852593312116375642/1053608836369502278
@@ -177,13 +154,3 @@ class SimpleFutures(IStrategy):
                 return 1
 
         return stoploss_from_open(sl_profit, current_profit, is_short=trade.is_short) or 1
-
-#    def custom_exit(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
-#                    current_profit: float, **kwargs):
-#        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-#        last_candle = dataframe.iloc[-1].squeeze()
-#        dataframe = detect_pullback(dataframe, 30)
-#        if "short" in trade.enter_tag and last_candle["pullback_flag"] > self.short_pullback_exit.value:
-#            return "short_pullback_exit"
-#        if "long" in trade.enter_tag and last_candle["pullback_flag"] < self.long_pullback_exit.value:
-#            return "long_pullback_exit"
