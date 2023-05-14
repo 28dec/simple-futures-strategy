@@ -20,19 +20,6 @@ import freqtrade.vendor.qtpylib.indicators as qtpylib
 logger = logging.getLogger(__name__)
 
 def smi_trend(df: DataFrame, k_length=9, d_length=3, smoothing_type='EMA', smoothing=10):
-    """
-    Stochastic Momentum Index (SMI) Trend Indicator 
-
-    SMI > 0 and SMI > MA: (2) Bull
-    SMI < 0 and SMI > MA: (1) Possible Bullish Reversal
-
-    SMI > 0 and SMI < MA: (-1) Possible Bearish Reversal
-    SMI < 0 and SMI < MA: (-2) Bear
-
-    Returns:
-        pandas.Series: New feature generated 
-    """
-
     ll = df['low'].rolling(window=k_length).min()
     hh = df['high'].rolling(window=k_length).max()
 
@@ -96,7 +83,7 @@ def detect_pullback(df: DataFrame, periods=30, method='candle_body'):
 
 class SimpleFutures(IStrategy):
     INTERFACE_VERSION = 3
-    timeframe = '15m'
+    timeframe = '1h'
 
     can_short = True
     use_custom_stoploss=True
@@ -104,7 +91,7 @@ class SimpleFutures(IStrategy):
     use_exit_signal = True
     exit_profit_only = False
     startup_candle_count: int = 0
-    stoploss = -1
+    stoploss = -0.291 # custom_stoploss would no lower than this dead line
     order_types = {
         'entry': 'market',
         'exit': 'market',
@@ -112,17 +99,17 @@ class SimpleFutures(IStrategy):
         'stoploss_on_exchange': False
     }
 
-    pullback_detect_method = CategoricalParameter(['stdev_outlier', 'pct_outlier', 'candle_body'], default = 'pct_outlier', space = 'buy', optimize = True)
-    ma_smoothy_type = CategoricalParameter(['SMA', 'EMA', 'WMA', 'DEMA', 'TEMA'], default = 'EMA', space = 'buy', optimize = True)
+#    pullback_detect_method = CategoricalParameter(['stdev_outlier', 'pct_outlier', 'candle_body'], default = 'pct_outlier', space = 'buy', optimize = True)
 
     # SMI params
     smi_k_length = IntParameter(1, 99, default=9, space="buy", optimize=True)
     smi_d_length = IntParameter(1, 99, default=3, space="buy", optimize=True)
     smi_smooth_length = IntParameter(1, 99, default=10, space="buy", optimize=True)
+    ma_smoothy_type = CategoricalParameter(['SMA', 'EMA', 'WMA', 'DEMA', 'TEMA'], default = 'EMA', space = 'buy', optimize = True)
 
     # Pullback params
-    short_pullback_exit = DecimalParameter(-0.99, 0.99, default=0.5, space='sell')
-    long_pullback_exit = DecimalParameter(-0.99, 0.99, default=-0.5, space='sell')
+#    short_pullback_exit = DecimalParameter(-0.99, 0.99, default=0.5, space='sell')
+#    long_pullback_exit = DecimalParameter(-0.99, 0.99, default=-0.5, space='sell')
 
     ## Trailing params
     # https://discordapp.com/channels/700048804539400213/852593312116375642/1053608836369502278
@@ -140,8 +127,6 @@ class SimpleFutures(IStrategy):
         return dataframe
 
     def populate_entry_trend(self, dataframe: DataFrame, metadata: dict) -> DataFrame:
-        dataframe = detect_pullback(dataframe, 30, self.pullback_detect_method.value)
-        last_candle = dataframe.iloc[-1].squeeze()
         dataframe.loc[
             (
                 (qtpylib.crossed_above(dataframe['smi_trend'], 0))
@@ -191,14 +176,14 @@ class SimpleFutures(IStrategy):
             if (1 - ((1 + sl_profit) / (1 + current_profit))) <= 0:
                 return 1
 
-        return stoploss_from_open(sl_profit, current_profit, is_short=trade.is_short)
+        return stoploss_from_open(sl_profit, current_profit, is_short=trade.is_short) or 1
 
-    def custom_exit(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
-                    current_profit: float, **kwargs):
-        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
-        last_candle = dataframe.iloc[-1].squeeze()
-        dataframe = detect_pullback(dataframe, 30)
-        if "short" in trade.enter_tag and last_candle["pullback_flag"] > self.short_pullback_exit.value:
-            return "short_pullback_exit"
-        if "long" in trade.enter_tag and last_candle["pullback_flag"] < self.long_pullback_exit.value:
-            return "long_pullback_exit"
+#    def custom_exit(self, pair: str, trade: 'Trade', current_time: 'datetime', current_rate: float,
+#                    current_profit: float, **kwargs):
+#        dataframe, _ = self.dp.get_analyzed_dataframe(pair, self.timeframe)
+#        last_candle = dataframe.iloc[-1].squeeze()
+#        dataframe = detect_pullback(dataframe, 30)
+#        if "short" in trade.enter_tag and last_candle["pullback_flag"] > self.short_pullback_exit.value:
+#            return "short_pullback_exit"
+#        if "long" in trade.enter_tag and last_candle["pullback_flag"] < self.long_pullback_exit.value:
+#            return "long_pullback_exit"
