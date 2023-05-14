@@ -20,20 +20,20 @@
       "max_open_trades": 3
     },
     "buy": {
-      "ma_smoothy_type": "EMA",
-      "smi_d_length": 1,
-      "smi_k_length": 54,
-      "smi_smooth_length": 35
+      "ma_smoothy_type": "DEMA",
+      "smi_d_length": 94,
+      "smi_k_length": 86,
+      "smi_smooth_length": 85
     },
     "sell": {
-      "pHSL": -0.09,
-      "pPF_1": 0.021,
-      "pPF_2": 0.178,
-      "pSL_1": 0.014,
-      "pSL_2": 0.19
+      "pHSL": -0.116,
+      "pPF_1": 0.026,
+      "pPF_2": 0.2,
+      "pSL_1": 0.008,
+      "pSL_2": 0.163
     },
     "protection": {}
   },
   "ft_stratparam_v": 1,
-  "export_time": "2023-05-13 22:39:44.926556+00:00"
+  "export_time": "2023-05-14 02:14:18.783742+00:00"
 }
